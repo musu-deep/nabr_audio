@@ -1,0 +1,48 @@
+name: Fetch Vosk Arabic Assets
+
+on:
+  push:
+    branches:
+      - automation/vosk-arabic-assets
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fetch-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Download Vosk Linux wheel
+        run: |
+          set -euo pipefail
+          mkdir -p assets
+          curl -L --fail --retry 3 \
+            -o assets/vosk-0.3.45-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl \
+            https://files.pythonhosted.org/packages/fc/ca/83398cfcd557360a3d7b2d732aee1c5f6999f68618d1645f38d53e14c9ff/vosk-0.3.45-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl
+          sha256sum assets/*.whl
+
+      - name: Download general Arabic model
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o assets/vosk-model-ar-mgb2-0.4.zip \
+            https://alphacephei.com/vosk/models/vosk-model-ar-mgb2-0.4.zip
+          ls -lh assets
+
+      - name: Upload Vosk wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: vosk-linux-wheel
+          path: assets/*.whl
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload Arabic model
+        uses: actions/upload-artifact@v4
+        with:
+          name: vosk-arabic-model
+          path: assets/vosk-model-ar-mgb2-0.4.zip
+          compression-level: 0
+          retention-days: 1
