@@ -1,0 +1,41 @@
+name: Build Whisper Arabic Runtime
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Build whisper.cpp CLI
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v1.9.1 https://github.com/ggml-org/whisper.cpp.git
+          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
+          cmake --build whisper.cpp/build --config Release -j2
+          mkdir -p runtime
+          cp whisper.cpp/build/bin/whisper-cli runtime/
+          ldd runtime/whisper-cli || true
+
+      - name: Download multilingual base quantized model
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            -o runtime/ggml-base-q5_1.bin \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin
+          ls -lh runtime
+
+      - name: Upload runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: whisper-arabic-runtime
+          path: runtime
+          compression-level: 0
+          retention-days: 1
