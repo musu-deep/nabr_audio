@@ -22,12 +22,12 @@ jobs:
       - name: Download runtime wheels
         run: |
           set -euo pipefail
-          mkdir -p package/wheels
+          mkdir -p wheels model
           python -m pip install --upgrade pip
           python -m pip download --only-binary=:all: \
-            --dest package/wheels \
+            --dest wheels \
             faster-whisper==1.2.0
-          ls -lh package/wheels
+          ls -lh wheels
 
       - name: Download multilingual small model
         run: |
@@ -37,16 +37,23 @@ jobs:
           from huggingface_hub import snapshot_download
           snapshot_download(
               repo_id='Systran/faster-whisper-small',
-              local_dir='package/model',
-              local_dir_use_symlinks=False,
+              local_dir='model',
           )
           PY
-          du -sh package/model package/wheels
+          du -sh model wheels
 
-      - name: Upload packaged runtime
+      - name: Upload runtime wheels
         uses: actions/upload-artifact@v4
         with:
-          name: faster-whisper-arabic-small
-          path: package
+          name: faster-whisper-wheels
+          path: wheels
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload small multilingual model
+        uses: actions/upload-artifact@v4
+        with:
+          name: faster-whisper-small-model
+          path: model
           compression-level: 0
           retention-days: 1
