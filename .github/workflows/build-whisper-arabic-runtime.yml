@@ -1,4 +1,4 @@
-name: Package Faster Whisper Arabic Runtime
+name: Package Faster Whisper Compact Models
 
 on:
   pull_request:
@@ -10,50 +10,33 @@ permissions:
   contents: read
 
 jobs:
-  package-runtime:
+  package-models:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 35
     steps:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: Download runtime wheels
-        run: |
-          set -euo pipefail
-          mkdir -p wheels model
-          python -m pip install --upgrade pip
-          python -m pip download --only-binary=:all: \
-            --dest wheels \
-            faster-whisper==1.2.0
-          ls -lh wheels
-
-      - name: Download multilingual small model
+      - name: Download compact multilingual models
         run: |
           set -euo pipefail
           python -m pip install huggingface-hub
           python - <<'PY'
           from huggingface_hub import snapshot_download
-          snapshot_download(
-              repo_id='Systran/faster-whisper-small',
-              local_dir='model',
-          )
+          for repo, target in [
+              ('Systran/faster-whisper-base', 'models/base'),
+              ('Systran/faster-whisper-tiny', 'models/tiny'),
+          ]:
+              snapshot_download(repo_id=repo, local_dir=target)
           PY
-          du -sh model wheels
+          du -sh models/*
 
-      - name: Upload runtime wheels
+      - name: Upload compact models
         uses: actions/upload-artifact@v4
         with:
-          name: faster-whisper-wheels
-          path: wheels
-          compression-level: 0
-          retention-days: 1
-
-      - name: Upload small multilingual model
-        uses: actions/upload-artifact@v4
-        with:
-          name: faster-whisper-small-model
-          path: model
+          name: faster-whisper-compact-models
+          path: models
           compression-level: 0
           retention-days: 1
