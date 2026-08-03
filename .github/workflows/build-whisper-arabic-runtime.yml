@@ -22,7 +22,9 @@ jobs:
           cmake --build whisper.cpp/build --config Release -j2
           mkdir -p runtime
           cp whisper.cpp/build/bin/whisper-cli runtime/
-          ldd runtime/whisper-cli || true
+          find whisper.cpp/build -type f -name '*.so*' -exec cp -a {} runtime/ \;
+          ls -lh runtime
+          LD_LIBRARY_PATH=runtime ldd runtime/whisper-cli || true
 
       - name: Download multilingual base quantized model
         run: |
