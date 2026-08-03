@@ -1,4 +1,4 @@
-name: Build Whisper Arabic Runtime
+name: Package Faster Whisper Arabic Runtime
 
 on:
   pull_request:
@@ -10,35 +10,43 @@ permissions:
   contents: read
 
 jobs:
-  build-runtime:
+  package-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - name: Build whisper.cpp CLI
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Download runtime wheels
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch v1.9.1 https://github.com/ggml-org/whisper.cpp.git
-          cmake -S whisper.cpp -B whisper.cpp/build -DCMAKE_BUILD_TYPE=Release -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_EXAMPLES=ON
-          cmake --build whisper.cpp/build --config Release -j2
-          mkdir -p runtime
-          cp whisper.cpp/build/bin/whisper-cli runtime/
-          find whisper.cpp/build -type f -name '*.so*' -exec cp -a {} runtime/ \;
+          mkdir -p package/wheels
+          python -m pip install --upgrade pip
+          python -m pip download --only-binary=:all: \
+            --dest package/wheels \
+            faster-whisper==1.2.0
+          ls -lh package/wheels
 
-      - name: Download stronger multilingual and VAD models
+      - name: Download multilingual small model
         run: |
           set -euo pipefail
-          curl -L --fail --retry 3 \
-            -o runtime/ggml-small-q5_1.bin \
-            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin
-          curl -L --fail --retry 3 \
-            -o runtime/ggml-silero-v6.2.0.bin \
-            https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin
-          ls -lh runtime
+          python -m pip install huggingface-hub
+          python - <<'PY'
+          from huggingface_hub import snapshot_download
+          snapshot_download(
+              repo_id='Systran/faster-whisper-small',
+              local_dir='package/model',
+              local_dir_use_symlinks=False,
+          )
+          PY
+          du -sh package/model package/wheels
 
-      - name: Upload runtime
+      - name: Upload packaged runtime
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-arabic-runtime-strong
-          path: runtime
+          name: faster-whisper-arabic-small
+          path: package
           compression-level: 0
           retention-days: 1
